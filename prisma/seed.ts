@@ -1810,8 +1810,12 @@ async function main() {
   ];
 
   for (const agentData of aiAgentsData) {
-    await prisma.aIAgent.create({
-      data: { tenant_id: platformTenant.id, ...agentData },
+    await prisma.aIAgent.upsert({
+      where: {
+        tenant_id_code: { tenant_id: platformTenant.id, code: agentData.code },
+      },
+      update: {},
+      create: { tenant_id: platformTenant.id, ...agentData },
     });
   }
   console.log(`   ✅ AI Agents: ${aiAgentsData.length} seeded`);
@@ -1869,12 +1873,17 @@ async function main() {
     },
   ];
 
-  for (const docData of ragDocsData) {
-    await prisma.rAGDocument.create({
-      data: { tenant_id: platformTenant.id, ...docData },
-    });
+  const existingDocs = await prisma.rAGDocument.count({ where: { tenant_id: platformTenant.id } });
+  if (existingDocs === 0) {
+    for (const docData of ragDocsData) {
+      await prisma.rAGDocument.create({
+        data: { tenant_id: platformTenant.id, ...docData },
+      });
+    }
+    console.log(`   ✅ RAG Documents: ${ragDocsData.length} seeded`);
+  } else {
+    console.log(`   ⏭️  RAG Documents already exist`);
   }
-  console.log(`   ✅ RAG Documents: ${ragDocsData.length} seeded`);
 
   // --- Autonomous Rules ---
   const autonomousRulesData = [
@@ -1919,105 +1928,115 @@ async function main() {
     },
   ];
 
-  for (const ruleData of autonomousRulesData) {
-    await prisma.autonomousRule.create({
-      data: { tenant_id: platformTenant.id, ...ruleData },
-    });
+  const existingRules = await prisma.autonomousRule.count({ where: { tenant_id: platformTenant.id } });
+  if (existingRules === 0) {
+    for (const ruleData of autonomousRulesData) {
+      await prisma.autonomousRule.create({
+        data: { tenant_id: platformTenant.id, ...ruleData },
+      });
+    }
+    console.log(`   ✅ Autonomous Rules: ${autonomousRulesData.length} seeded`);
+  } else {
+    console.log(`   ⏭️  Autonomous Rules already exist`);
   }
-  console.log(`   ✅ Autonomous Rules: ${autonomousRulesData.length} seeded`);
 
   // --- Analytics Dashboard ---
-  const execDashboard = await prisma.analyticsDashboard.create({
-    data: {
-      tenant_id: platformTenant.id,
-      created_by: superAdmin.id,
-      title: "Executive Overview",
-      description: "Cross-module executive dashboard with AI-enhanced insights",
-      is_default: true,
-      is_shared: true,
-      layout: [
-        { id: "w1", x: 0, y: 0, w: 4, h: 2 },
-        { id: "w2", x: 4, y: 0, w: 4, h: 2 },
-        { id: "w3", x: 8, y: 0, w: 4, h: 2 },
-        { id: "w4", x: 0, y: 2, w: 6, h: 3 },
-        { id: "w5", x: 6, y: 2, w: 6, h: 3 },
-      ],
-      refresh_interval: 300,
-    },
-  });
-
-  // --- Analytics Widgets ---
-  const widgetsData = [
-    {
-      title: "Revenue Overview",
-      widget_type: "chart",
-      data_sources: "accounting,billing",
-      insight_type: "REVENUE_ATTRIBUTION" as const,
-      visualization: "line",
-      query_config: { metric: "revenue", period: "monthly", range: "12m" },
-      display_config: { colors: ["#4F46E5", "#10B981"], showTrend: true },
-      position: { x: 0, y: 0, w: 4, h: 2 },
-      ai_enhanced: true,
-      ai_config: { forecast: true, anomaly_detection: true },
-      sort_order: 1,
-    },
-    {
-      title: "Sales Pipeline",
-      widget_type: "chart",
-      data_sources: "crm",
-      visualization: "funnel",
-      query_config: { metric: "deals_by_stage", pipeline: "default" },
-      display_config: { colors: ["#6366F1", "#8B5CF6", "#A78BFA", "#C4B5FD"] },
-      position: { x: 4, y: 0, w: 4, h: 2 },
-      ai_enhanced: false,
-      sort_order: 2,
-    },
-    {
-      title: "Employee Metrics",
-      widget_type: "kpi",
-      data_sources: "hrms,payroll",
-      insight_type: "EMPLOYEE_COST" as const,
-      visualization: "number",
-      query_config: { metrics: ["headcount", "avg_salary", "attrition_rate"] },
-      display_config: { layout: "grid" },
-      position: { x: 8, y: 0, w: 4, h: 2 },
-      ai_enhanced: true,
-      ai_config: { trend_analysis: true },
-      sort_order: 3,
-    },
-    {
-      title: "Customer 360",
-      widget_type: "table",
-      data_sources: "crm,accounting,community",
-      insight_type: "CUSTOMER_360" as const,
-      visualization: "table",
-      query_config: { top_customers: 10, include: ["revenue", "tickets", "engagement"] },
-      display_config: { sortable: true, paginated: true },
-      position: { x: 0, y: 2, w: 6, h: 3 },
-      ai_enhanced: true,
-      ai_config: { churn_prediction: true },
-      sort_order: 4,
-    },
-    {
-      title: "Partner ROI",
-      widget_type: "chart",
-      data_sources: "partner,accounting",
-      insight_type: "PARTNER_ROI" as const,
-      visualization: "bar",
-      query_config: { metric: "roi_by_partner", top: 10 },
-      display_config: { colors: ["#EC4899", "#F472B6"] },
-      position: { x: 6, y: 2, w: 6, h: 3 },
-      ai_enhanced: false,
-      sort_order: 5,
-    },
-  ];
-
-  for (const widgetData of widgetsData) {
-    await prisma.analyticsWidget.create({
-      data: { dashboard_id: execDashboard.id, ...widgetData },
+  const existingDashboards = await prisma.analyticsDashboard.count({ where: { tenant_id: platformTenant.id } });
+  if (existingDashboards === 0) {
+    const execDashboard = await prisma.analyticsDashboard.create({
+      data: {
+        tenant_id: platformTenant.id,
+        created_by: superAdmin.id,
+        title: "Executive Overview",
+        description: "Cross-module executive dashboard with AI-enhanced insights",
+        is_default: true,
+        is_shared: true,
+        layout: [
+          { id: "w1", x: 0, y: 0, w: 4, h: 2 },
+          { id: "w2", x: 4, y: 0, w: 4, h: 2 },
+          { id: "w3", x: 8, y: 0, w: 4, h: 2 },
+          { id: "w4", x: 0, y: 2, w: 6, h: 3 },
+          { id: "w5", x: 6, y: 2, w: 6, h: 3 },
+        ],
+        refresh_interval: 300,
+      },
     });
+
+    // --- Analytics Widgets ---
+    const widgetsData = [
+      {
+        title: "Revenue Overview",
+        widget_type: "chart",
+        data_sources: "accounting,billing",
+        insight_type: "REVENUE_ATTRIBUTION" as const,
+        visualization: "line",
+        query_config: { metric: "revenue", period: "monthly", range: "12m" },
+        display_config: { colors: ["#4F46E5", "#10B981"], showTrend: true },
+        position: { x: 0, y: 0, w: 4, h: 2 },
+        ai_enhanced: true,
+        ai_config: { forecast: true, anomaly_detection: true },
+        sort_order: 1,
+      },
+      {
+        title: "Sales Pipeline",
+        widget_type: "chart",
+        data_sources: "crm",
+        visualization: "funnel",
+        query_config: { metric: "deals_by_stage", pipeline: "default" },
+        display_config: { colors: ["#6366F1", "#8B5CF6", "#A78BFA", "#C4B5FD"] },
+        position: { x: 4, y: 0, w: 4, h: 2 },
+        ai_enhanced: false,
+        sort_order: 2,
+      },
+      {
+        title: "Employee Metrics",
+        widget_type: "kpi",
+        data_sources: "hrms,payroll",
+        insight_type: "EMPLOYEE_COST" as const,
+        visualization: "number",
+        query_config: { metrics: ["headcount", "avg_salary", "attrition_rate"] },
+        display_config: { layout: "grid" },
+        position: { x: 8, y: 0, w: 4, h: 2 },
+        ai_enhanced: true,
+        ai_config: { trend_analysis: true },
+        sort_order: 3,
+      },
+      {
+        title: "Customer 360",
+        widget_type: "table",
+        data_sources: "crm,accounting,community",
+        insight_type: "CUSTOMER_360" as const,
+        visualization: "table",
+        query_config: { top_customers: 10, include: ["revenue", "tickets", "engagement"] },
+        display_config: { sortable: true, paginated: true },
+        position: { x: 0, y: 2, w: 6, h: 3 },
+        ai_enhanced: true,
+        ai_config: { churn_prediction: true },
+        sort_order: 4,
+      },
+      {
+        title: "Partner ROI",
+        widget_type: "chart",
+        data_sources: "partner,accounting",
+        insight_type: "PARTNER_ROI" as const,
+        visualization: "bar",
+        query_config: { metric: "roi_by_partner", top: 10 },
+        display_config: { colors: ["#EC4899", "#F472B6"] },
+        position: { x: 6, y: 2, w: 6, h: 3 },
+        ai_enhanced: false,
+        sort_order: 5,
+      },
+    ];
+
+    for (const widgetData of widgetsData) {
+      await prisma.analyticsWidget.create({
+        data: { dashboard_id: execDashboard.id, ...widgetData },
+      });
+    }
+    console.log(`   ✅ Analytics Dashboard: 1 with ${widgetsData.length} widgets seeded`);
+  } else {
+    console.log(`   ⏭️  Analytics Dashboards already exist`);
   }
-  console.log(`   ✅ Analytics Dashboard: 1 with ${widgetsData.length} widgets seeded`);
 
   console.log("   ✅ Phase 7 seed complete");
 
