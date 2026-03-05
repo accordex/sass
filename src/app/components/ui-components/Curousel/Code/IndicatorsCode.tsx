@@ -1,0 +1,26 @@
+import { Carousel } from 'flowbite-react'
+
+const IndicatorsCode = () => {
+  return (
+    <div>
+      <div className='grid h-56 grid-cols-2 gap-4 sm:h-64 xl:h-80 2xl:h-96 overflow-hidden'>
+        <Carousel>
+          <img src='/images/blog/blog-img1.jpg' alt='...' />
+          <img src='/images/blog/blog-img2.jpg' alt='...' />
+          <img src='/images/blog/blog-img3.jpg' alt='...' />
+          <img src='/images/blog/blog-img4.jpg' alt='...' />
+          <img src='/images/blog/blog-img5.jpg' alt='...' />
+        </Carousel>
+        <Carousel indicators={false}>
+          <img src='/images/blog/blog-img1.jpg' alt='...' />
+          <img src='/images/blog/blog-img2.jpg' alt='...' />
+          <img src='/images/blog/blog-img3.jpg' alt='...' />
+          <img src='/images/blog/blog-img4.jpg' alt='...' />
+          <img src='/images/blog/blog-img5.jpg' alt='...' />
+        </Carousel>
+      </div>
+    </div>
+  )
+}
+
+export default IndicatorsCode

@@ -1,0 +1,132 @@
+"use client";
+
+// ==============================================================================
+// Payments Made Client Component
+// ==============================================================================
+// Lists outgoing payments made to vendors/suppliers.
+// ==============================================================================
+
+import React, { useEffect, useState } from "react";
+import { Badge, Button, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, TextInput, Spinner } from "flowbite-react";
+import CardBox from "@/app/components/shared/CardBox";
+import { Icon } from "@iconify/react";
+import { getPaymentsMade } from "@/app/actions/accounting";
+
+const PaymentsMadeClient = () => {
+  const [payments, setPayments] = useState<any[]>([]);
+  const [meta, setMeta] = useState({ total: 0, page: 1, perPage: 10, totalPages: 1 });
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await getPaymentsMade({
+        page, perPage: 10, search,
+        sortBy: "payment_date", sortOrder: "desc",
+      });
+      if ("error" in result) {
+        setError(result.error as string);
+      } else {
+        setPayments(result.data || []);
+        setMeta(result.meta || { total: 0, page: 1, perPage: 10, totalPages: 1 });
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to load payments made");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); }, [page]); // eslint-disable-line
+  useEffect(() => {
+    const t = setTimeout(() => { setPage(1); fetchData(); }, 400);
+    return () => clearTimeout(t);
+  }, [search]); // eslint-disable-line
+
+  return (
+    <>
+      <CardBox className="mb-6">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex-1 min-w-[200px]">
+            <TextInput
+              icon={() => <Icon icon="solar:magnifer-line-duotone" height={18} />}
+              placeholder="Search payments made..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <Badge color="dark" className="px-3 py-1">Total: {meta.total}</Badge>
+        </div>
+      </CardBox>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm">
+          <Icon icon="solar:danger-triangle-line-duotone" className="inline mr-2" height={16} />{error}
+        </div>
+      )}
+
+      <CardBox>
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <Spinner size="lg" />
+              <span className="ml-3 text-gray-500">Loading payments made...</span>
+            </div>
+          ) : payments.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <Icon icon="solar:hand-money-line-duotone" height={48} className="mx-auto mb-3 opacity-50" />
+              <p className="text-lg">No payments made found</p>
+            </div>
+          ) : (
+            <Table hoverable>
+              <TableHead>
+                <TableHeadCell>Payment #</TableHeadCell>
+                <TableHeadCell>Vendor</TableHeadCell>
+                <TableHeadCell>Bill</TableHeadCell>
+                <TableHeadCell>Payment Date</TableHeadCell>
+                <TableHeadCell>Amount</TableHeadCell>
+                <TableHeadCell>Mode</TableHeadCell>
+                <TableHeadCell>Reference</TableHeadCell>
+              </TableHead>
+              <TableBody className="divide-y">
+                {payments.map((payment: any) => (
+                  <TableRow key={payment.id}>
+                    <TableCell className="font-medium">{payment.payment_number || payment.id?.slice(0, 8)}</TableCell>
+                    <TableCell>{payment.vendor_name || "—"}</TableCell>
+                    <TableCell>{payment.bill?.bill_number || "—"}</TableCell>
+                    <TableCell>{new Date(payment.payment_date).toLocaleDateString()}</TableCell>
+                    <TableCell className="font-semibold text-red-600">
+                      ₹{Number(payment.amount || 0).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <Badge color="warning">{payment.payment_mode || "—"}</Badge>
+                    </TableCell>
+                    <TableCell>{payment.reference_number || "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+
+        {meta.totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <span className="text-sm text-gray-500">
+              Showing {(meta.page - 1) * meta.perPage + 1}–{Math.min(meta.page * meta.perPage, meta.total)} of {meta.total}
+            </span>
+            <div className="flex gap-2">
+              <Button size="xs" color="light" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button>
+              <Button size="xs" color="light" disabled={page >= meta.totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
+            </div>
+          </div>
+        )}
+      </CardBox>
+    </>
+  );
+};
+
+export default PaymentsMadeClient;
